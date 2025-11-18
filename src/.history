@@ -1,0 +1,6 @@
+HISTORY
+1 cd python_project
+2 cd "C://Users//Lu//project_python"
+3 cp laba-2-python lab2
+4 cp "C://Users//Lu//project_python//laba-2-python" "C://Users//Lu//project_python"
+5 cp -r "C://Users//Lu//project_python//laba-2-python" "C://Users//Lu//project_python"
