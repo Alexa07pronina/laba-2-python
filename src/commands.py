@@ -13,6 +13,8 @@ history_path = os.path.join(script_dir, '.history')
 
 base_dir = os.path.dirname(script_dir)  #поднимаемся на уровень выше src
 trash_path = os.path.join(base_dir, ".trash")
+if not os.path.exists(trash_path):
+    os.mkdir(trash_path)
 
 
 def input_check(string: str) -> str:
@@ -454,11 +456,3 @@ class Operations:
             logger.info(f"Untar SUCCESS\n")
         except Exception as e:
             logger.error(f"Error in untar: {e}")
-
-
-
-
-
-
-
-
