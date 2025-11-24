@@ -12,12 +12,21 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 history_path = os.path.join(script_dir, '.history')
 home_dir=os.path.expanduser("~")
 home_dir=home_dir.replace('\\','//')
-
+parent_dir_for_home= os.path.dirname(home_dir)
 base_dir = os.path.dirname(script_dir)
 trash_path = os.path.join(base_dir, ".trash")
 if not os.path.exists(trash_path):
     os.mkdir(trash_path)
 
+protected_paths = [
+            os.path.abspath(os.path.expanduser("~")),
+            os.path.abspath(base_dir),
+            os.path.abspath(script_dir),
+            os.path.abspath(trash_path),
+            os.path.abspath(history_path),
+            os.path.abspath(os.getcwd()),
+            os.path.abspath(parent_dir_for_home)
+]
 
 def input_check(string: str) -> str:
     """
@@ -151,13 +160,18 @@ class Operations:
         """
         Копирование файла или директории
         """
+        arg1, arg2 = self.arg[0], self.arg[1]
+        parent_dir = os.path.dirname(arg1)
+        protected_paths.append(os.path.abspath(parent_dir))
+        if os.path.abspath(arg1) in protected_paths or os.path.dirname(os.path.abspath(arg1)) == os.path.abspath(parent_dir_for_home):
+            logger.warning(f"Attempted to delete protected directory: {arg1}")
+            print("Permission denied")
+            return None
         try:
             arg1,arg2=self.arg[0],self.arg[1]
             if os.path.exists(arg1):
                 if os.path.isfile(arg1):
-                    # Для файлов
                     destination = os.path.join(arg2, os.path.basename(arg1))
-                    # Если файл с таким именем уже существует в корзине, добавляем суффикс
                     counter = 1
                     while os.path.exists(destination):
                         name, ext = os.path.splitext(os.path.basename(arg1))
@@ -167,9 +181,7 @@ class Operations:
                     logger.info(f"Copy file {arg1} to {arg2}")
 
                 elif os.path.isdir(arg1):
-                    # Для директорий
                     destination = os.path.join(arg2, os.path.basename(arg1))
-                    # Если директория с таким именем уже существует в корзине, добавляем суффикс
                     counter = 1
                     while os.path.exists(destination):
                         destination = os.path.join(arg2, f"{os.path.basename(arg1)}_{counter}")
@@ -193,20 +205,9 @@ class Operations:
         Удаление файлов и директорий
         """
         path = self.arg
-        parent_dir = os.path.dirname(os.getcwd())
-
-        # Защищенные пути
-        protected_paths = [
-            os.path.abspath(parent_dir),
-            os.path.abspath(os.path.expanduser("~")),
-            os.path.abspath(base_dir),
-            os.path.abspath(script_dir),
-            os.path.abspath(trash_path),
-            os.path.abspath(history_path),
-            os.path.abspath(os.getcwd())
-        ]
-
-        if os.path.abspath(path) in protected_paths:
+        parent_dir = os.path.dirname(path)
+        protected_paths.append(os.path.abspath(parent_dir))
+        if os.path.abspath(path) in protected_paths or os.path.dirname(os.path.abspath(path)) == os.path.abspath(parent_dir_for_home):
             logger.warning(f"Attempted to delete protected directory: {path}")
             print("Permission denied")
             return None
@@ -214,9 +215,7 @@ class Operations:
         try:
             if os.path.exists(path):
                 if os.path.isfile(path):
-                    # Для файлов
                     destination = os.path.join(trash_path, os.path.basename(path))
-                    # Если файл с таким именем уже существует в корзине, добавляем суффикс
                     counter = 1
                     while os.path.exists(destination):
                         name, ext = os.path.splitext(os.path.basename(path))
@@ -230,16 +229,13 @@ class Operations:
                     if ans != 'y':
                         return None
 
-                    # Для директорий
                     destination = os.path.join(trash_path, os.path.basename(path))
-                    # Если директория с таким именем уже существует в корзине, добавляем суффикс
                     counter = 1
                     while os.path.exists(destination):
                         destination = os.path.join(trash_path, f"{os.path.basename(path)}_{counter}")
                         counter += 1
 
                     if not os.listdir(path):
-                        # Пустая директория
                         shutil.move(path, destination)
                         logger.info(f"Moved empty directory to trash: {path}")
                     else:
@@ -262,30 +258,16 @@ class Operations:
         """
         try:
             arg1, arg2 = self.arg[0], self.arg[1]
-            parent_dir = os.path.dirname(os.getcwd())
-            # Защищенные пути
-            protected_paths = [
-                os.path.abspath(parent_dir),
-                os.path.dirname(arg1),
-                os.path.abspath(os.path.expanduser("~")),
-                os.path.abspath(base_dir),
-                os.path.abspath(script_dir),
-                os.path.abspath(trash_path),
-                os.path.abspath(history_path),
-                os.path.abspath(os.getcwd())
-            ]
-
-            if os.path.abspath(arg1) in protected_paths:
+            parent_dir = os.path.dirname(arg1)
+            protected_paths.append(os.path.abspath(parent_dir))
+            if os.path.abspath(arg1) in protected_paths or os.path.dirname(os.path.abspath(arg1)) == os.path.abspath(parent_dir_for_home):
                 logger.warning(f"Attempted to delete protected directory: {arg1}")
                 print("Permission denied")
                 return None
 
-
             if os.path.exists(arg1):
                 if os.path.isfile(arg1):
-                    # Для файлов
                     destination = os.path.join(arg2, os.path.basename(arg1))
-                    # Если файл с таким именем уже существует в корзине, добавляем суффикс
                     counter = 1
                     while os.path.exists(destination):
                         name, ext = os.path.splitext(os.path.basename(arg1))
@@ -295,9 +277,7 @@ class Operations:
                     logger.info(f"Moved file {arg1} to {arg2}")
 
                 elif os.path.isdir(arg1):
-                    # Для директорий
                     destination = os.path.join(arg2, os.path.basename(arg1))
-                    # Если директория с таким именем уже существует в корзине, добавляем суффикс
                     counter = 1
                     while os.path.exists(destination):
                         destination = os.path.join(arg2, f"{os.path.basename(arg1)}_{counter}")
@@ -382,7 +362,6 @@ class Operations:
                 return None
 
             with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-                # Проходим по всем файлам и поддиректориям
                 for root, dirs, files in os.walk(path):
                     for file in files:
                         file_path = os.path.join(root, file)
@@ -424,7 +403,7 @@ class Operations:
             return tar_path
 
         except Exception as e:
-            logger.error(f"Error in create tar: {e}")  # Исправлена опечатка "crezte"
+            logger.error(f"Error in create tar: {e}")
             return None
 
     def unzip(self):
