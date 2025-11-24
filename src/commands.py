@@ -163,7 +163,9 @@ class Operations:
         arg1, arg2 = self.arg[0], self.arg[1]
         parent_dir = os.path.dirname(arg1)
         protected_paths.append(os.path.abspath(parent_dir))
-        if os.path.abspath(arg1) in protected_paths or os.path.dirname(os.path.abspath(arg1)) == os.path.abspath(parent_dir_for_home):
+        protected_paths.append(os.path.abspath(arg1))
+        if os.path.abspath(arg1) in protected_paths or os.path.dirname(
+                os.path.abspath(arg1)).lower() == os.path.abspath(parent_dir_for_home).lower():
             logger.warning(f"Attempted to delete protected directory: {arg1}")
             print("Permission denied")
             return None
@@ -207,7 +209,8 @@ class Operations:
         path = self.arg
         parent_dir = os.path.dirname(path)
         protected_paths.append(os.path.abspath(parent_dir))
-        if os.path.abspath(path) in protected_paths or os.path.dirname(os.path.abspath(path)) == os.path.abspath(parent_dir_for_home):
+        protected_paths.append(os.path.abspath(path))
+        if os.path.abspath(path) in protected_paths or os.path.dirname(os.path.abspath(path)).lower() == os.path.abspath(parent_dir_for_home).lower():
             logger.warning(f"Attempted to delete protected directory: {path}")
             print("Permission denied")
             return None
@@ -260,7 +263,9 @@ class Operations:
             arg1, arg2 = self.arg[0], self.arg[1]
             parent_dir = os.path.dirname(arg1)
             protected_paths.append(os.path.abspath(parent_dir))
-            if os.path.abspath(arg1) in protected_paths or os.path.dirname(os.path.abspath(arg1)) == os.path.abspath(parent_dir_for_home):
+            protected_paths.append(os.path.abspath(arg1))
+            if os.path.abspath(arg1) in protected_paths or os.path.dirname(
+                    os.path.abspath(arg1)).lower() == os.path.abspath(parent_dir_for_home).lower():
                 logger.warning(f"Attempted to delete protected directory: {arg1}")
                 print("Permission denied")
                 return None
