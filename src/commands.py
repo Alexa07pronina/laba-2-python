@@ -8,18 +8,21 @@ import tarfile
 from src.logger import get_logger
 
 logger = get_logger()
+
 script_dir = os.path.dirname(os.path.abspath(__file__))
 history_path = os.path.join(script_dir, '.history')
+base_dir = os.path.dirname(script_dir)
+trash_path = os.path.join(base_dir, ".trash")
+
 home_dir=os.path.expanduser("~")
 home_dir=home_dir.replace('\\','//')
 parent_dir_for_home= os.path.dirname(home_dir)
-base_dir = os.path.dirname(script_dir)
-trash_path = os.path.join(base_dir, ".trash")
+
 if not os.path.exists(trash_path):
     os.mkdir(trash_path)
 
 protected_paths = [
-            os.path.abspath(os.path.expanduser("~")),
+            os.path.abspath(home_dir),
             os.path.abspath(base_dir),
             os.path.abspath(script_dir),
             os.path.abspath(trash_path),
@@ -36,6 +39,7 @@ def input_check(string: str) -> str:
     if lst[0] not in ['cp','rm','ls','mv','history','undo','cd','cat','untar','unzip','tar','zip']:
         logger.error(f"Wrong input: No such command {lst[0]}")
         return ""
+
     if len(lst)>1:
         if lst[1] in ["-r","-l"]:
             if lst[0] in ['cd','ls','history','undo','cat','untar','unzip','tar','zip'] and lst[1]=="-r":
@@ -50,12 +54,17 @@ def input_check(string: str) -> str:
         elif lst[1][0]=='-':
             logger.error(f"Wrong input: No such key {lst[1]}")
             return ""
-        elif len(lst)!=3 and lst[0] in ['cp','mv']:
+        elif len(lst)!=3 and lst[0] in ['cp','mv','zip','tar']:
             logger.error(f"Wrong input: Missing arguments")
             return ""
+
         if len(lst)>=2:
-            if lst[0] in ['history','untar','unzip','tar','zip'] and len(lst)==2:
+            if lst[0] in ['history','untar','unzip'] and len(lst)==2:
                 return string
+            if lst[0] in ['zip','tar']:
+                lst[1] = f'"{os.path.abspath(lst[1])}"'
+                lst[1] = lst[1].replace('\\', '//')
+                return " ".join(lst)
             try:
                 for i in range(1,len(lst)):
                     if lst[i] not in ['-l','-r']:
@@ -163,7 +172,7 @@ class Operations:
         arg1, arg2 = self.arg[0], self.arg[1]
         parent_dir = os.path.dirname(arg1)
         protected_paths.append(os.path.abspath(parent_dir))
-        protected_paths.append(os.path.abspath(arg1))
+        protected_paths.append(os.getcwd())
         if os.path.abspath(arg1) in protected_paths or os.path.dirname(
                 os.path.abspath(arg1)).lower() == os.path.abspath(parent_dir_for_home).lower():
             logger.warning(f"Attempted to delete protected directory: {arg1}")
@@ -209,7 +218,7 @@ class Operations:
         path = self.arg
         parent_dir = os.path.dirname(path)
         protected_paths.append(os.path.abspath(parent_dir))
-        protected_paths.append(os.path.abspath(path))
+        protected_paths.append(os.getcwd())
         if os.path.abspath(path) in protected_paths or os.path.dirname(os.path.abspath(path)).lower() == os.path.abspath(parent_dir_for_home).lower():
             logger.warning(f"Attempted to delete protected directory: {path}")
             print("Permission denied")
@@ -263,7 +272,7 @@ class Operations:
             arg1, arg2 = self.arg[0], self.arg[1]
             parent_dir = os.path.dirname(arg1)
             protected_paths.append(os.path.abspath(parent_dir))
-            protected_paths.append(os.path.abspath(arg1))
+            protected_paths.append(os.getcwd())
             if os.path.abspath(arg1) in protected_paths or os.path.dirname(
                     os.path.abspath(arg1)).lower() == os.path.abspath(parent_dir_for_home).lower():
                 logger.warning(f"Attempted to delete protected directory: {arg1}")
@@ -340,40 +349,45 @@ class Operations:
                     break
             if f==0:
                 logger.warning("no commands to cancel")
-            else:
-                logger.info("undo: SUCCESS\n")
         except Exception as e:
             logger.error(f"Error in undo: {e}")
 
     def zip(self):
         """
-        Создание zip-архива
+        Создание zip-архива с указанным именем
         """
-        path = self.arg
-        parent_dir = os.path.dirname(os.path.abspath(path))
-        folder_name = os.path.basename(os.path.abspath(path))
-        zip_path = os.path.join(parent_dir, f"{folder_name}.zip")
+        arg1, arg2 = self.arg[0], self.arg[1]
 
         try:
-            if not os.path.exists(path):
-                logger.error(f"{path} not found")
-                return None
-            if not os.path.isdir(path):
-                logger.error(f"{path} is not a folder")
+            parent_dir = os.path.dirname(os.path.abspath(arg1))
+
+            if arg2.endswith('.zip'):
+                zip_name = arg2
+            else:
+                zip_name = f"{arg2}.zip"
+
+            zip_path = os.path.join(parent_dir, zip_name)
+
+            if not os.path.exists(arg1):
+                logger.error(f"{arg1} not found")
                 return None
 
-            if not any(os.scandir(path)):
-                logger.error(f"directory {path} is clear")
+            if not os.path.isdir(arg1):
+                logger.error(f"{arg1} is not a folder")
+                return None
+
+            if not any(os.scandir(arg1)):
+                logger.error(f"directory {arg1} is empty")
                 return None
 
             with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-                for root, dirs, files in os.walk(path):
+                for root, dirs, files in os.walk(arg1):
                     for file in files:
                         file_path = os.path.join(root, file)
-                        arcname = os.path.relpath(file_path, path)
+                        arcname = os.path.relpath(file_path, arg1)
                         zipf.write(file_path, arcname)
 
-            logger.info(f"ZIP Create: SUCCESS\n")
+            logger.info(f"ZIP Create: SUCCESS - {zip_path}")
             return zip_path
 
         except Exception as e:
@@ -382,29 +396,38 @@ class Operations:
 
     def tar(self):
         """
-        Создание tar-архива
+        Создание tar-архива с указанным именем
         """
-        path = self.arg
-        parent_dir = os.path.dirname(os.path.abspath(path))
-        folder_name = os.path.basename(os.path.abspath(path))
-        tar_path = os.path.join(parent_dir, f"{folder_name}.tar.gz")
+        arg1, arg2 = self.arg[0], self.arg[1]
 
         try:
-            if not os.path.exists(path):
-                logger.error(f"{path} not found")
-                return None
-            if not os.path.isdir(path):
-                logger.error(f"{path} is not a folder")
+            parent_dir = os.path.dirname(os.path.abspath(arg1))
+
+            if arg2.endswith('.tar.gz'):
+                tar_name = arg2
+            else:
+                tar_name = f"{arg2}.tar.gz"
+
+            tar_path = os.path.join(parent_dir, tar_name)
+
+            if not os.path.exists(arg1):
+                logger.error(f"{arg1} not found")
                 return None
 
-            if not any(os.scandir(path)):
-                logger.error(f"directory {path} is clear")
+            if not os.path.isdir(arg1):
+                logger.error(f"{arg1} is not a folder")
                 return None
 
+            # Проверяем, что папка не пустая
+            if not any(os.scandir(arg1)):
+                logger.error(f"directory {arg1} is empty")
+                return None
+
+            # Создаем архив
             with tarfile.open(tar_path, 'w:gz') as tarf:
-                tarf.add(path, arcname=os.path.basename(path))
+                tarf.add(arg1, arcname=os.path.basename(arg1))
 
-            logger.info(f"TAR Create: SUCCESS -> {tar_path}\n")
+            logger.info(f"TAR Create: SUCCESS -> {tar_path}")
             return tar_path
 
         except Exception as e:
@@ -413,39 +436,63 @@ class Operations:
 
     def unzip(self):
         """
-        Разорхивация zip-архива
+        Распаковка zip-архива в папку с именем архива
         """
-        archive_path=self.arg
-        target_dir = '.'
+        archive_path = self.arg
+
         try:
-            if not os.path.exists(archive_path):
-                logger.error(f"not found {archive_path}")
+            current_dir = os.path.abspath('.')
+            archive_abs_path = os.path.abspath(archive_path)
+            if not os.path.exists(archive_abs_path):
+                logger.error(f"Archive not found: {archive_abs_path}")
                 return None
 
-            if not zipfile.is_zipfile(archive_path):
-                logger.error(f"{archive_path} is not a zip")
+            if not zipfile.is_zipfile(archive_abs_path):
+                logger.error(f"Not a zip file: {archive_abs_path}")
                 return None
-            with zipfile.ZipFile(archive_path, 'r') as zipf:
-                zipf.extractall(target_dir)
 
-            logger.info(f"Unzip SUCCESS\n")
+            archive_name = os.path.basename(archive_abs_path)
+            folder_name = os.path.splitext(archive_name)[0]
+            extract_dir = os.path.join(current_dir, folder_name)
+
+            os.makedirs(extract_dir, exist_ok=True)
+
+            with zipfile.ZipFile(archive_abs_path, 'r') as zipf:
+                zipf.extractall(extract_dir)
+
+            logger.info(f"Unzip SUCCESS -> {extract_dir}")
+            return extract_dir
 
         except Exception as e:
             logger.error(f"Error in unzip: {e}")
+            return None
 
     def untar(self):
         """
-        Разорхивация tar-архива
+        Распаковка tar-архива в папку с именем архива
         """
-        archive_path=self.arg
-        target_dir = '.'
-        try:
-            if not os.path.exists(archive_path):
-                logger.error(f"not found {archive_path}")
-                return None
-            with tarfile.open(archive_path, 'r') as tarf:
-                tarf.extractall(target_dir)
+        archive_path = self.arg
 
-            logger.info(f"Untar SUCCESS\n")
+        try:
+            current_dir = os.path.abspath('.')
+            archive_abs_path = os.path.abspath(archive_path)
+
+            if not os.path.exists(archive_abs_path):
+                logger.error(f"Archive not found: {archive_abs_path}")
+                return None
+
+            archive_name = os.path.basename(archive_abs_path)
+            folder_name = archive_name[:-7]
+            extract_dir = os.path.join(current_dir, folder_name)
+
+            os.makedirs(extract_dir, exist_ok=True)
+
+            with tarfile.open(archive_abs_path, 'r:gz') as tarf:
+                tarf.extractall(extract_dir)
+
+            logger.info(f"Untar SUCCESS -> {extract_dir}")
+            return extract_dir
+
         except Exception as e:
             logger.error(f"Error in untar: {e}")
+            return None

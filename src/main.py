@@ -61,7 +61,7 @@ def undo(arg='.'):
     obj=Operations(arg)
     obj.undo()
 @app.command()
-def zip(path: str = typer.Argument(".")):
+def zip(path: List[str] = typer.Argument(["."])):
     obj=Operations(path)
     obj.zip()
 @app.command()
@@ -69,7 +69,7 @@ def unzip(path: str = typer.Argument(".")):
     obj=Operations(path)
     obj.unzip()
 @app.command()
-def tar(path: str = typer.Argument(".")):
+def tar(path: List[str] = typer.Argument(["."])):
     obj=Operations(path)
     obj.tar()
 @app.command()
