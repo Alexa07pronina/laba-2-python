@@ -10,8 +10,10 @@ from src.logger import get_logger
 logger = get_logger()
 script_dir = os.path.dirname(os.path.abspath(__file__))
 history_path = os.path.join(script_dir, '.history')
+home_dir=os.path.expanduser("~")
+home_dir=home_dir.replace('\\','//')
 
-base_dir = os.path.dirname(script_dir)  #поднимаемся на уровень выше src
+base_dir = os.path.dirname(script_dir)
 trash_path = os.path.join(base_dir, ".trash")
 if not os.path.exists(trash_path):
     os.mkdir(trash_path)
@@ -51,6 +53,8 @@ def input_check(string: str) -> str:
                         if os.path.exists(os.path.abspath(lst[i])):
                             lst[i]=f'"{os.path.abspath(lst[i])}"'
                             lst[i]=lst[i].replace('\\','//')
+                        elif lst[i]=="~":
+                            lst[i]=home_dir
                         else:
                             logger.error(f"Path do not exists")
                             return ""
@@ -106,7 +110,10 @@ class Operations:
                 permissions = stat.filemode(stat_info.st_mode)
                 size = stat_info.st_size
                 time= stat_info.st_mtime
-                result.append(f"{permissions} {time} {size:8d} \033[94m{file}\033[0m")
+                if os.path.isdir(file):
+                    result.append(f"{permissions} {time} {size:8d} \033[94m{file}\033[0m")
+                else:
+                    result.append(f"{permissions} {time} {size:8d} {file}")
             logger.info(f"ls -l {self.arg}: SUCCESS\n")
             return result
 
@@ -195,7 +202,8 @@ class Operations:
             os.path.abspath(base_dir),
             os.path.abspath(script_dir),
             os.path.abspath(trash_path),
-            os.path.abspath(history_path)
+            os.path.abspath(history_path),
+            os.path.abspath(os.getcwd())
         ]
 
         if os.path.abspath(path) in protected_paths:
@@ -263,7 +271,8 @@ class Operations:
                 os.path.abspath(base_dir),
                 os.path.abspath(script_dir),
                 os.path.abspath(trash_path),
-                os.path.abspath(history_path)
+                os.path.abspath(history_path),
+                os.path.abspath(os.getcwd())
             ]
 
             if os.path.abspath(arg1) in protected_paths:
